@@ -4,6 +4,8 @@ import random
 import os
 from skimage.transform import rotate
 from torch.utils.data import Dataset, DataLoader
+import PIL
+import tqdm
 
 class MyRotationTransform:
     def __init__(self,angles=[0,90,-90.180]):
@@ -47,19 +49,27 @@ class r3dDataset(Dataset):
             door = self.transform(door)
         return image,boundary,room,door
 
+
 class FolderDataset(Dataset):
-    def __init__(self,folder,size=512,transform=None):
-        self.folder = folder
+    def __init__(self,base_folder,size=512,transform=None, is_test=False):
+        self.base_folder = base_folder
         self.size = size
         self.transform = transform
         self.rotation = MyRotationTransform()
 
         self.file_item_list = []
-        self.add_files(folder)
-        self.cache_for_item = {}
+
+        if is_test:
+            self.add_files(os.path.join(base_folder,'test'))
+        else:
+            
+            self.add_files(os.path.join(base_folder,'train'))
+            self.add_files(os.path.join(base_folder,'val'))
+
 
     def add_files(self, folder):
-        for file in os.listdir(folder):
+        print(f'Loading {folder}...')
+        for file in tqdm.tqdm(os.listdir(folder)):
             file_path = os.path.join(folder, file)
             if not os.path.exists(file_path):
                 continue
@@ -75,46 +85,37 @@ class FolderDataset(Dataset):
                 boundary_path = f"{folder}/{base_path}_boundary.png"
                 if not os.path.exists(img_path) or not os.path.exists(room_path) or not os.path.exists(door_path) or not os.path.exists(boundary_path):
                     print(f'ERROR: file miss for {base_path}')
-                self.file_item_list.append({'img_path':img_path, 'room_path':room_path, 'door_path':door_path, 'boundary_path':boundary_path})
+                self.file_item_list.append({'image':self._get_numpystr_of_file(img_path, 'RGB'), 
+                                            'room':self._get_numpystr_of_file(room_path, 'L'), 
+                                            'door':self._get_numpystr_of_file(door_path, 'L'), 
+                                            'boundary':self._get_numpystr_of_file(boundary_path, 'L')})
 
     def __len__(self):
         return len(self.file_item_list)
     
-    def _get_file_item_for_path(self, file_path):
-        if file_path in self.cache_for_item:
-            return self.cache_for_item[file_path]
-        return None
+    def _get_numpystr_of_file(self, file_path, mode):
+        img = PIL.Image.open(file_path)
+        if img.mode != mode:
+            img = img.convert(mode)
+        img = img.resize((self.size, self.size))
+        npstr = np.array(img).tostring()
+        return npstr
+
 
     def _getset(self,idx): 
         file_item = self.file_item_list[idx]
 
-        file_path = file_item['img_path']
-        image = self._get_file_item_for_path(file_path)
-        if image is None:
-            image_raw = cv2.imread(file_path)
-            image = cv2.resize(image_raw,(self.size,self.size))
-            self.cache_for_item[file_path] = image
+        #file_path = file_item['img_path']
+        image = np.fromstring(file_item['image'], dtype=np.uint8).reshape(self.size, self.size, 3)
 
-        file_path = file_item['boundary_path']
-        boundary = self._get_file_item_for_path(file_path)
-        if boundary is None:
-            image_raw = cv2.imread(file_path, cv2.IMREAD_GRAYSCALE)
-            image = cv2.resize(image_raw,(self.size,self.size), interpolation=cv2.INTER_NEAREST)
-            self.cache_for_item[file_path] = boundary
+        #file_path = file_item['boundary_path']
+        boundary = np.fromstring(file_item['boundary'], dtype=np.uint8).reshape(self.size, self.size)
 
-        file_path = file_item['room_path']
-        room = self._get_file_item_for_path(file_path)
-        if room is None:
-            image_raw = cv2.imread(file_path, cv2.IMREAD_GRAYSCALE)
-            image = cv2.resize(image_raw,(self.size,self.size), cv2.INTER_NEAREST)
-            self.cache_for_item[file_path] = room
+        #file_path = file_item['room_path']
+        room = np.fromstring(file_item['room'], dtype=np.uint8).reshape(self.size, self.size)
 
-        file_path = file_item['door_path']
-        door = self._get_file_item_for_path(file_path)
-        if door is None:
-            image_raw = cv2.imread(file_path, cv2.IMREAD_GRAYSCALE)
-            image = cv2.resize(image_raw,(self.size,self.size), cv2.INTER_NEAREST)
-            self.cache_for_item[file_path] = door
+        #file_path = file_item['door_path']
+        door = np.fromstring(file_item['door'], dtype=np.uint8).reshape(self.size, self.size)
 
         return image,boundary,room,door
     

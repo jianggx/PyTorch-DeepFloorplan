@@ -1,6 +1,5 @@
 import argparse
 from torch.utils.tensorboard import SummaryWriter
-writer = SummaryWriter('log/store2')
 from importmod import *
 import tqdm
 import torch.optim as optim
@@ -87,12 +86,21 @@ def setup(args):
 def getloader(args):
     # data
     trans = transforms.Compose([transforms.ToTensor()])
-    r3d = r3dDataset(transform=trans)
+    if args.cubicasa:
+        print('[INFO] Using cubicasa5k dataset')
+        r3d = FolderDataset(base_folder='dataset/cubicasa5k', transform=trans, is_test=False)
+    else:
+        print('[INFO] Using r3d dataset')
+        r3d = r3dDataset(transform=trans)
     total_image = len(r3d)
-    indices = list(range(total_image))
     total_batch = total_image//args.batch_size
-    split = int(np.floor(args.valsplit*total_image))
-    train_indices,val_indices = indices[split:],indices[:split]
+    train_indices,val_indices = [],[]
+    for indice in list(range(total_image)):
+        if random.random() < args.valsplit:
+            val_indices.append(indice)
+        else:
+            train_indices.append(indice)
+
     train_sampler = SubsetRandomSampler(train_indices)
     valid_sampler = SubsetRandomSampler(val_indices)
     train_loader = DataLoader(r3d,batch_size=args.batch_size,
@@ -102,6 +110,11 @@ def getloader(args):
     return train_loader,valid_loader,total_image,total_batch
 
 def main(args):
+    if not os.path.exists(args.output):
+        os.makedirs(args.output)
+
+    writer = SummaryWriter(args.output) 
+
     device,model,optimizer = setup(args)
     train_loader,valid_loader,total_image,total_batch = getloader(args)
     if args.earlystop:
@@ -164,13 +177,13 @@ def main(args):
         if args.earlystop:
             early_stopping(running_loss_val,model)
         else:
-            torch.save(model.state_dict(),'log/store2/checkpoint.pt')
+            torch.save(model.state_dict(), os.path.join(args.output, 'checkpoint.pt'))
         
         if args.earlystop:
             if early_stopping.early_stop:
                 print("Early stopping")
                 break
-    model.load_state_dict(torch.load('log/store2/checkpoint.pt'))
+    model.load_state_dict(torch.load(os.path.join(args.output, 'checkpoint.pt')))
     
     return model
 
@@ -186,7 +199,9 @@ if __name__ == "__main__":
     p.add_argument('--tensorboard',type=bool,default=True)
     p.add_argument('--earlystop',type=bool,default=False)
     p.add_argument('--patience',type=int,default=20)
+    p.add_argument('--output',type=str,default='log/store2')
+    p.add_argument('--cubicasa',type=bool,default=False)
     args = p.parse_args()
     main(args)
-    breakpoint()
+    #breakpoint()
 

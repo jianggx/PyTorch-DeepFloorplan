@@ -131,6 +131,52 @@ class FolderDataset(Dataset):
             door = self.transform(door)
         return image,boundary,room,door
     
+
+class CC5kWithAuguDataset(FolderDataset):
+    def __init__(self,base_folder,size=512,transform=None, is_test=False):
+        super().__init__(base_folder,size,transform,is_test)
+        self.add_files(os.path.join(base_folder,'train_augu'))
+
+    def add_files(self, folder):
+        print(f'Loading {folder}...')
+        for file in tqdm.tqdm(os.listdir(folder)):
+            file_path = os.path.join(folder, file)
+            if not os.path.exists(file_path):
+                continue
+            
+            if not os.path.isfile(file_path):
+                continue
+
+            if file.endswith('_room.png'):
+                base_path = file[:-9]
+                room_path = f"{folder}/{base_path}_room.png"
+                door_path = f"{folder}/{base_path}_door.png"
+                boundary_path = f"{folder}/{base_path}_boundary.png"
+                if not os.path.exists(room_path) or not os.path.exists(door_path) or not os.path.exists(boundary_path):
+                    print(f'ERROR: file miss for {base_path}')
+
+                room_str = self._get_numpystr_of_file(room_path, 'L')
+                door_str = self._get_numpystr_of_file(door_path, 'L')
+                boundary_str = self._get_numpystr_of_file(boundary_path, 'L')
+                org_path = f"{folder}/{base_path}_org.png"
+                if not os.path.exists(org_path):
+                    print(f'ERROR: file miss for {base_path}')
+                self.file_item_list.append({'image':self._get_numpystr_of_file(org_path, 'RGB'), 
+                                            'room':room_str, 
+                                            'door':door_str, 
+                                            'boundary':boundary_str})
+                doubleline_path = f"{folder}/{base_path}_doublelinewall.png"
+                self.file_item_list.append({'image':self._get_numpystr_of_file(doubleline_path, 'RGB'), 
+                                            'room':room_str, 
+                                            'door':door_str, 
+                                            'boundary':boundary_str})
+                blackwall_path = f"{folder}/{base_path}_blackwall.png"
+                self.file_item_list.append({'image':self._get_numpystr_of_file(blackwall_path, 'RGB'), 
+                                            'room':room_str, 
+                                            'door':door_str, 
+                                            'boundary':boundary_str})
+
+
 if __name__ == "__main__":
 
     import matplotlib.pyplot as plt

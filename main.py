@@ -89,6 +89,9 @@ def getloader(args):
     if args.cubicasa:
         print('[INFO] Using cubicasa5k dataset')
         r3d = FolderDataset(base_folder='dataset/cubicasa5k', transform=trans, is_test=False)
+    elif args.cubicasa_augu:
+        print('[INFO] Using cubicasa5k dataset with augmentation')
+        r3d = CC5kWithAuguDataset(base_folder='dataset/deepFloorPlan_cc5k_with_augu', transform=trans, is_test=False)
     else:
         print('[INFO] Using r3d dataset')
         r3d = r3dDataset(transform=trans)
@@ -201,6 +204,7 @@ if __name__ == "__main__":
     p.add_argument('--patience',type=int,default=20)
     p.add_argument('--output',type=str,default='log/store2')
     p.add_argument('--cubicasa',type=bool,default=False)
+    p.add_argument('--cubicasa_augu',type=bool,default=False)
     args = p.parse_args()
     main(args)
     #breakpoint()

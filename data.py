@@ -158,20 +158,24 @@ class CC5kWithAuguDataset(FolderDataset):
                 room_str = self._get_numpystr_of_file(room_path, 'L')
                 door_str = self._get_numpystr_of_file(door_path, 'L')
                 boundary_str = self._get_numpystr_of_file(boundary_path, 'L')
+
                 org_path = f"{folder}/{base_path}_org.png"
-                if not os.path.exists(org_path):
-                    print(f'ERROR: file miss for {base_path}')
-                self.file_item_list.append({'image':self._get_numpystr_of_file(org_path, 'RGB'), 
+                if os.path.exists(org_path):
+                    self.file_item_list.append({'image':self._get_numpystr_of_file(org_path, 'RGB'), 
                                             'room':room_str, 
                                             'door':door_str, 
                                             'boundary':boundary_str})
+
                 doubleline_path = f"{folder}/{base_path}_doublelinewall.png"
-                self.file_item_list.append({'image':self._get_numpystr_of_file(doubleline_path, 'RGB'), 
+                if os.path.exists(doubleline_path):
+                    self.file_item_list.append({'image':self._get_numpystr_of_file(doubleline_path, 'RGB'), 
                                             'room':room_str, 
                                             'door':door_str, 
                                             'boundary':boundary_str})
+
                 blackwall_path = f"{folder}/{base_path}_blackwall.png"
-                self.file_item_list.append({'image':self._get_numpystr_of_file(blackwall_path, 'RGB'), 
+                if os.path.exists(blackwall_path):
+                    self.file_item_list.append({'image':self._get_numpystr_of_file(blackwall_path, 'RGB'), 
                                             'room':room_str, 
                                             'door':door_str, 
                                             'boundary':boundary_str})
